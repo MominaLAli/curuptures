@@ -141,11 +141,10 @@ class Pelt:
             # simultaneously.
             # -------------------------------------------------
 
-            gpu_segment_costs = self.cost.error_many(
+            gpu_segment_costs = self.cost._error_many_unchecked(
                 starts=valid_starts,
                 end=end,
             )
-
             segment_costs = cp.asnumpy(
                 gpu_segment_costs
             )
