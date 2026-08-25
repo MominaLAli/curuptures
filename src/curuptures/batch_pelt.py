@@ -5,20 +5,18 @@ from .costs import BatchCostL2
 
 class BatchPelt:
     """
-    Batched GPU change-point detection with a PELT-compatible
-    penalized segmentation objective.
+    Batched GPU implementation of PELT.
 
-    This initial implementation performs exact dynamic programming
-    without PELT pruning. The purpose of this version is to establish
-    correctness and exploit parallelism across independent time series.
+    Independent time series are processed in parallel on the GPU,
+    while each series maintains its own PELT admissible candidate set.
 
     Parameters
     ----------
     model : str, default="l2"
-        Currently only "l2" is supported.
+        Currently only the L2 cost is supported.
 
     min_size : int, default=2
-        Minimum segment length.
+        Minimum allowed segment length.
 
     jump : int, default=5
         Candidate breakpoint spacing.
@@ -61,16 +59,6 @@ class BatchPelt:
     def fit(self, signals):
         """
         Fit batched L2 prefix statistics on the GPU.
-
-        Parameters
-        ----------
-        signals : array-like
-
-            Shape:
-                (n_series, n_samples)
-
-            or:
-                (n_series, n_samples, n_features)
         """
 
         self.cost.fit(signals)
@@ -88,11 +76,10 @@ class BatchPelt:
 
     def _segment(self, pen):
         """
-        Exact batched dynamic programming.
+        Run batched PELT with independent pruning per series.
 
-        All series share the same candidate breakpoint grid,
-        while objective values are maintained independently
-        for each series.
+        Candidate segment costs are computed in parallel across
+        both time series and candidate start positions.
         """
 
         n = self.n_samples
@@ -113,11 +100,11 @@ class BatchPelt:
             if k >= self.min_size
         ]
 
-        # Signal end is always included.
+        # The signal end is always a breakpoint candidate.
         endpoints.append(n)
 
         # --------------------------------------------------
-        # GPU dynamic-programming state
+        # Dynamic-programming state
         # --------------------------------------------------
 
         best_cost = cp.full(
@@ -134,7 +121,7 @@ class BatchPelt:
 
         best_cost[:, 0] = 0.0
 
-        # Every potential start position on the jump grid.
+        # Candidate locations on the jump grid.
         candidate_grid = cp.arange(
             0,
             n,
@@ -142,56 +129,145 @@ class BatchPelt:
             dtype=cp.int64,
         )
 
+        n_grid = candidate_grid.size
+
+        # One admissibility mask per time series.
+        #
+        # admissible[i, j] == True means candidate_grid[j]
+        # remains active for series i.
+        admissible = cp.zeros(
+            (batch, n_grid),
+            dtype=cp.bool_,
+        )
+
         rows = cp.arange(
             batch,
             dtype=cp.int64,
         )
 
+        # --------------------------------------------------
+        # PELT recursion
+        # --------------------------------------------------
+
         for end in endpoints:
 
-            # Largest candidate start satisfying min_size.
-            max_start = (
+            # Same candidate-generation rule used by PELT.
+            new_start = (
                 (end - self.min_size)
                 // self.jump
             ) * self.jump
 
-            if max_start < 0:
+            if new_start < 0:
                 continue
 
-            n_candidates = (
-                max_start // self.jump
-            ) + 1
+            new_index = (
+                new_start
+                // self.jump
+            )
 
-            starts = candidate_grid[
+            # Add/re-add the newest admissible candidate
+            # independently for every series.
+            admissible[
+                :,
+                new_index,
+            ] = True
+
+            n_candidates = (
+                new_index + 1
+            )
+
+            all_starts = candidate_grid[
                 :n_candidates
+            ]
+
+            active = admissible[
+                :,
+                :n_candidates
+            ]
+
+            # A candidate cannot be used until an optimal
+            # prefix solution exists at that position.
+            finite_prefix = cp.isfinite(
+                best_cost[
+                    :,
+                    all_starts,
+                ]
+            )
+
+            active = (
+                active
+                & finite_prefix
+            )
+
+            # --------------------------------------------------
+            # Compact candidates discarded by EVERY series.
+            #
+            # Each series still keeps its own independent mask.
+            # --------------------------------------------------
+
+            active_any = cp.any(
+                active,
+                axis=0,
+            )
+
+            selected_indices = cp.where(
+                active_any
+            )[0]
+
+            if selected_indices.size == 0:
+                continue
+
+            starts = all_starts[
+                selected_indices
+            ]
+
+            active_selected = active[
+                :,
+                selected_indices
             ]
 
             # --------------------------------------------------
             # Batched GPU segment costs
             #
             # Shape:
-            # (n_series, n_candidates)
+            # (n_series, n_selected_candidates)
             # --------------------------------------------------
 
-            segment_costs = self.cost._error_many_unchecked(
-                starts=starts,
-                end=end,
+            segment_costs = (
+                self.cost._error_many_unchecked(
+                    starts=starts,
+                    end=end,
+                )
             )
-            # Prefix states that were never feasible remain
-            # infinity, so they cannot be selected.
+
             totals = (
-                best_cost[:, starts]
+                best_cost[
+                    :,
+                    starts,
+                ]
                 + segment_costs
                 + pen
             )
 
-            # Independent optimum for each time series.
-            best_index = cp.argmin(
+            # Candidates that are inactive for a particular
+            # series must not participate in that series'
+            # minimization.
+            masked_totals = cp.where(
+                active_selected,
                 totals,
+                cp.inf,
+            )
+
+            # --------------------------------------------------
+            # Optimal DP state independently for every series
+            # --------------------------------------------------
+
+            best_index = cp.argmin(
+                masked_totals,
                 axis=1,
             )
 
-            best_value = totals[
+            best_value = masked_totals[
                 rows,
                 best_index,
             ]
@@ -200,16 +276,53 @@ class BatchPelt:
                 best_index
             ]
 
-            best_cost[:, end] = (
-                best_value
+            best_cost[
+                :,
+                end,
+            ] = best_value
+
+            previous[
+                :,
+                end,
+            ] = best_start
+
+            # --------------------------------------------------
+            # TRUE PELT PRUNING
+            #
+            # Keep candidate t for series i when:
+            #
+            # F_i(t) + C_i(t, end) + pen
+            #     <=
+            # F_i(end) + pen
+            #
+            # This mirrors the pruning test used by ruptures.
+            # --------------------------------------------------
+
+            keep_selected = (
+                active_selected
+                & (
+                    totals
+                    <= (
+                        best_value[:, None]
+                        + pen
+                    )
+                )
             )
 
-            previous[:, end] = (
-                best_start
-            )
+            # Clear the processed candidate region.
+            admissible[
+                :,
+                :n_candidates,
+            ] = False
+
+            # Restore only candidates that survived pruning.
+            admissible[
+                :,
+                selected_indices,
+            ] = keep_selected
 
         # --------------------------------------------------
-        # One final GPU -> CPU copy for reconstruction
+        # One final GPU -> CPU transfer
         # --------------------------------------------------
 
         previous_cpu = cp.asnumpy(
@@ -218,7 +331,9 @@ class BatchPelt:
 
         results = []
 
-        for series_index in range(batch):
+        for series_index in range(
+            batch
+        ):
 
             if previous_cpu[
                 series_index,
