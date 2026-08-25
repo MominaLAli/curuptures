@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+src/curuptures/__init__.py
+src/curuptures/pelt.py
+src/curuptures.egg-info/PKG-INFO
+src/curuptures.egg-info/SOURCES.txt
+src/curuptures.egg-info/dependency_links.txt
+src/curuptures.egg-info/requires.txt
+src/curuptures.egg-info/top_level.txt
+src/curuptures/costs/__init__.py
+src/curuptures/costs/l2.py
+tests/test_cost_l2.py
