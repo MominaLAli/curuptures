@@ -1,0 +1,107 @@
+cuRuptures controlled H100 benchmark
+Date: 2026-08-25
+
+Hardware
+--------
+Node: srph1705
+GPU: NVIDIA H100 80GB HBM3
+GPU count: 1
+GPU utilization before benchmark: 0%
+Competing GPU processes: none
+
+CPU: Intel Xeon Platinum 8462Y+
+CPUs visible on node: 64
+Sockets: 2
+Cores per socket: 32
+Threads per core: 1
+
+Software
+--------
+Python: 3.12.13
+NumPy: 2.5.2
+CuPy: 14.2.0
+ruptures: 1.1.10
+CUDA runtime: 12.9
+NVIDIA driver: 575.57.08
+
+Correctness
+-----------
+pytest: 32 passed
+
+Three-way benchmark
+-------------------
+N = 1000
+Repeats = 7
+
+series   CPU med    Pelt med   Optimal med   Pelt xCPU   Optimal xCPU   Optimal/Pelt
+5        0.189888   0.086392   0.045009      2.198x      4.219x         1.919x
+10       0.381328   0.085642   0.044864      4.453x      8.500x         1.909x
+25       0.960383   0.086821   0.045061     11.062x     21.313x         1.927x
+50       1.907447   0.087198   0.045539     21.875x     41.886x         1.915x
+100      3.804752   0.088421   0.045433     43.030x     83.744x         1.946x
+
+Signal-length scaling
+---------------------
+Batch size = 25
+
+N       CPU med     Pelt med    Optimal med   Pelt xCPU   Optimal xCPU   Optimal/Pelt
+250     0.069816    0.022061    0.011473       3.165x       6.085x         1.923x
+500     0.252155    0.042909    0.022504       5.877x      11.205x         1.907x
+1000    0.959811    0.086811    0.044827      11.056x      21.411x         1.937x
+2000    3.794955    0.173234    0.088760      21.907x      42.755x         1.952x
+4000   15.483945    0.360282    0.179149      42.977x      86.430x         2.011x
+
+Long-signal GPU scaling
+-----------------------
+Batch size = 10
+
+N        Pelt med    Optimal med   Optimal/Pelt
+4000     0.400766    0.180550         2.220x
+8000     0.722960    0.362532         1.994x
+16000    1.458040    0.719912         2.025x
+32000    2.925678    1.440511         2.031x
+
+Extreme-length GPU scaling
+--------------------------
+Batch size = 5
+jump = 5
+
+N        candidate-series evaluations   Pelt med    Optimal med   Optimal/Pelt
+32000       102,416,000                  2.804953    1.396892         2.008x
+64000       409,632,000                  5.648733    2.787643         2.026x
+128000    1,638,464,000                 11.241054    5.570651         2.018x
+
+256k repeated stress benchmark
+------------------------------
+Batch size = 5
+N = 256000
+jump = 5
+candidate-series evaluations = 6,553,728,000
+
+Run 1:
+BatchPelt = 24.359742 s
+BatchOptimalPartitioning = 11.518058 s
+Optimal/Pelt = 2.115x
+
+Run 2:
+BatchPelt = 24.734972 s
+BatchOptimalPartitioning = 11.535364 s
+Optimal/Pelt = 2.144x
+
+Run 3:
+BatchPelt = 23.596341 s
+BatchOptimalPartitioning = 11.404606 s
+Optimal/Pelt = 2.069x
+
+Summary:
+BatchPelt mean = 24.230352 s
+BatchPelt median = 24.359742 s
+BatchPelt std = 0.580238 s
+
+BatchOptimalPartitioning mean = 11.486009 s
+BatchOptimalPartitioning median = 11.518058 s
+BatchOptimalPartitioning std = 0.071026 s
+
+Mean relative advantage ≈ 2.11x
+
+All tested solver outputs matched exactly.
