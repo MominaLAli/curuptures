@@ -173,11 +173,10 @@ class BatchPelt:
             # (n_series, n_candidates)
             # --------------------------------------------------
 
-            segment_costs = self.cost.error_many(
+            segment_costs = self.cost._error_many_unchecked(
                 starts=starts,
                 end=end,
             )
-
             # Prefix states that were never feasible remain
             # infinity, so they cannot be selected.
             totals = (

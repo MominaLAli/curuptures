@@ -30,7 +30,7 @@ class BatchCostL2:
 
     def fit(self, signals):
         """
-        Copy a batch of signals to GPU and build prefix statistics.
+        Copy a batch of signals to the GPU and build prefix statistics.
         """
 
         x = cp.asarray(
@@ -38,7 +38,6 @@ class BatchCostL2:
             dtype=self.dtype,
         )
 
-        # (batch, time) -> (batch, time, 1)
         if x.ndim == 2:
             x = x[:, :, None]
 
@@ -105,23 +104,87 @@ class BatchCostL2:
                 "before calculating costs"
             )
 
-    def error_many(self, starts, end):
+    def _compute_many_gpu(self, starts, end):
         """
-        Compute candidate segment costs for every series.
+        Core batched GPU calculation.
 
-        Parameters
-        ----------
-        starts : array-like
-            Candidate segment starts.
-
-        end : int
-            Common segment endpoint.
+        Assumes starts and end have already been validated.
 
         Returns
         -------
         cupy.ndarray
-            Shape:
-            (n_series, n_candidates)
+            Shape (n_series, n_candidates)
+        """
+
+        lengths = end - starts
+
+        sums = (
+            self.prefix_sum[:, end, :][:, None, :]
+            - self.prefix_sum[:, starts, :]
+        )
+
+        sq_sums = (
+            self.prefix_sq_sum[:, end, :][:, None, :]
+            - self.prefix_sq_sum[:, starts, :]
+        )
+
+        lengths = lengths.astype(
+            self.dtype
+        )[None, :, None]
+
+        cost_per_feature = (
+            sq_sums
+            - (sums * sums) / lengths
+        )
+
+        costs = cp.sum(
+            cost_per_feature,
+            axis=2,
+        )
+
+        return cp.maximum(
+            costs,
+            0.0,
+        )
+
+    def _error_many_unchecked(self, starts, end):
+        """
+        Internal fast path used by BatchPelt.
+
+        No GPU-side validity checks are performed.
+        """
+
+        # BatchPelt already supplies a CuPy int64 array.
+        if not isinstance(starts, cp.ndarray):
+            starts = cp.asarray(
+                starts,
+                dtype=cp.int64,
+            )
+        elif starts.dtype != cp.int64:
+            starts = starts.astype(
+                cp.int64,
+                copy=False,
+            )
+
+        if starts.size == 0:
+            return cp.empty(
+                (
+                    self.n_series,
+                    0,
+                ),
+                dtype=self.dtype,
+            )
+
+        return self._compute_many_gpu(
+            starts,
+            end,
+        )
+
+    def error_many(self, starts, end):
+        """
+        Compute candidate segment costs for every series.
+
+        This public method performs input validation.
         """
 
         self._check_is_fitted()
@@ -152,7 +215,9 @@ class BatchCostL2:
             )
 
         if bool(
-            cp.any(starts < 0).item()
+            cp.any(
+                starts < 0
+            ).item()
         ):
             raise ValueError(
                 "starts must be >= 0"
@@ -169,33 +234,7 @@ class BatchCostL2:
                 "all segments must satisfy min_size"
             )
 
-        # Shape:
-        # (series, candidates, features)
-        sums = (
-            self.prefix_sum[:, end, :][:, None, :]
-            - self.prefix_sum[:, starts, :]
-        )
-
-        sq_sums = (
-            self.prefix_sq_sum[:, end, :][:, None, :]
-            - self.prefix_sq_sum[:, starts, :]
-        )
-
-        lengths = lengths.astype(
-            self.dtype
-        )[None, :, None]
-
-        cost_per_feature = (
-            sq_sums
-            - (sums * sums) / lengths
-        )
-
-        costs = cp.sum(
-            cost_per_feature,
-            axis=2,
-        )
-
-        return cp.maximum(
-            costs,
-            0.0,
+        return self._compute_many_gpu(
+            starts,
+            end,
         )
