@@ -1,4 +1,4 @@
-cuRuptures controlled H100 benchmark
+cuRuptures controlled GPU benchmark
 Date: 2026-08-25
 
 Hardware
