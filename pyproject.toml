@@ -2,16 +2,73 @@
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
+
 [project]
 name = "curuptures"
 version = "0.1.0"
 description = "GPU-accelerated change-point detection with CuPy"
+readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+
+keywords = [
+    "change-point detection",
+    "time series",
+    "GPU",
+    "CUDA",
+    "CuPy",
+    "PELT",
+    "segmentation",
+    "machine learning",
+]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
 
 dependencies = [
-    "numpy",
-    "cupy-cuda13x"
+    "numpy>=1.24",
 ]
+
+
+[project.optional-dependencies]
+
+cuda12 = [
+    "cupy-cuda12x>=14.0",
+]
+
+cuda13 = [
+    "cupy-cuda13x>=14.0",
+]
+
+test = [
+    "pytest>=8",
+    "ruptures>=1.1.10",
+]
+
+benchmark = [
+    "ruptures>=1.1.10",
+]
+
+
+[project.urls]
+Homepage = "https://github.com/YOUR-GITHUB-USERNAME/curuptures"
+Repository = "https://github.com/YOUR-GITHUB-USERNAME/curuptures"
+Issues = "https://github.com/YOUR-GITHUB-USERNAME/curuptures/issues"
+
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
