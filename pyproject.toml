@@ -60,10 +60,6 @@ benchmark = [
 ]
 
 
-[project.urls]
-Homepage = "https://github.com/YOUR-GITHUB-USERNAME/curuptures"
-Repository = "https://github.com/YOUR-GITHUB-USERNAME/curuptures"
-Issues = "https://github.com/YOUR-GITHUB-USERNAME/curuptures/issues"
 
 
 [tool.setuptools.packages.find]
