@@ -1,7 +1,0 @@
-Metadata-Version: 2.4
-Name: curuptures
-Version: 0.1.0
-Summary: GPU-accelerated change-point detection with CuPy
-Requires-Python: >=3.10
-Requires-Dist: numpy
-Requires-Dist: cupy-cuda13x
