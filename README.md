@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/curuptures-banner.png" alt="cuRuptures" width="100%">
+</p>
+
 # cuRuptures ⚡
 
 **GPU-Accelerated Change-Point Detection using NVIDIA CUDA and CuPy**
