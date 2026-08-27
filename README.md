@@ -1,69 +1,78 @@
-# cuRuptures
+# cuRuptures ⚡
 
-**GPU-accelerated change-point detection with CuPy.**
+**GPU-Accelerated Change-Point Detection using NVIDIA CUDA and CuPy**
 
-cuRuptures provides GPU implementations of exact change-point detection
-algorithms with an API inspired by
-[ruptures](https://github.com/deepcharles/ruptures).
-
-The library is designed particularly for **batched change-point detection**,
-where many independent time series can be processed simultaneously on a CUDA
-GPU.
-
-> **Status:** Experimental / alpha. The API may change before the first stable
-> release.
+[![PyPI](https://img.shields.io/pypi/v/curuptures?label=PyPI&color=blue)](https://pypi.org/project/curuptures/)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![CUDA](https://img.shields.io/badge/CUDA-GPU-green)](https://developer.nvidia.com/cuda-toolkit)
+[![CuPy](https://img.shields.io/badge/CuPy-GPU%20Arrays-orange)](https://cupy.dev/)
+[![License](https://img.shields.io/badge/license-MIT-orange)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/MominaLAli/curuptures)](https://github.com/MominaLAli/curuptures/releases)
+[![Package Checks](https://github.com/MominaLAli/curuptures/actions/workflows/package-checks.yml/badge.svg)](https://github.com/MominaLAli/curuptures/actions/workflows/package-checks.yml)
 
 ---
 
-## Why cuRuptures?
+## 🚀 Overview
 
-Change-point detection algorithms often require evaluating many candidate
-segments. For large collections of time series, this can become
-computationally expensive.
+**cuRuptures** is a GPU-accelerated change-point detection library powered by
+[CuPy](https://cupy.dev/) and NVIDIA CUDA.
 
-cuRuptures uses **CuPy and CUDA** to evaluate segment costs and dynamic
-programming states across many signals in parallel.
+It is designed especially for **batched change-point detection**, where many
+independent time series can be processed simultaneously on a GPU.
 
-The package currently provides two complementary batched exact solvers:
+cuRuptures provides an API inspired by
+[ruptures](https://github.com/deepcharles/ruptures), while focusing on
+GPU-oriented implementations and high-throughput workloads.
 
-- `BatchPelt` — batched PELT with per-series pruning.
-- `BatchOptimalPartitioning` — unpruned exact optimal partitioning designed
-  around regular GPU-parallel operations.
+Designed for:
 
-An important design observation behind cuRuptures is that pruning does not
-automatically imply faster execution on a GPU. Dense, regular computations can
-sometimes outperform irregular pruning operations even when more candidate
-segments are evaluated.
-
----
-
-## Features
-
-- GPU-accelerated L2 segment cost using CuPy
-- Single-series PELT
-- Batched L2 cost evaluation
-- Batched PELT with independent pruning for every series
-- Batched exact optimal partitioning without pruning
-- Univariate time series
-- Multivariate time series
-- NumPy input support
-- CuPy GPU backend
-- `fit`, `predict`, and `fit_predict` style APIs
-- Correctness validation against `ruptures`
-- Randomized correctness tests
-- GPU scaling benchmarks
+- Time-series segmentation
+- Change-point detection
+- Batched signal analysis
+- Large-scale monitoring
+- Scientific computing
+- Machine-learning pipelines
+- GPU-accelerated time-series analytics
 
 ---
 
-## Installation
+## ✨ Features
 
-cuRuptures requires an NVIDIA GPU and a working CUDA installation.
+✅ GPU acceleration with CUDA and CuPy
 
-### CUDA 13
+✅ L2 piecewise-constant segment cost
 
-```bash
-pip install "curuptures[cuda13]"
-```
+✅ Single-series PELT
+
+✅ Batched PELT with independent per-series pruning
+
+✅ Exact batched optimal partitioning
+
+✅ Batched GPU segment-cost evaluation
+
+✅ Univariate and multivariate signals
+
+✅ NumPy input support
+
+✅ CuPy GPU backend
+
+✅ `ruptures`-style API
+
+- `fit()`
+- `predict()`
+- `fit_predict()`
+
+✅ Correctness validation against `ruptures`
+
+✅ Randomized and edge-case testing
+
+✅ Reproducible GPU benchmarks
+
+---
+
+## 📦 Installation
+
+cuRuptures is available on PyPI.
 
 ### CUDA 12
 
@@ -71,18 +80,23 @@ pip install "curuptures[cuda13]"
 pip install "curuptures[cuda12]"
 ```
 
-For development from a local source checkout:
+### CUDA 13
 
 ```bash
-cd curuptures
-pip install -e ".[cuda13,test]"
+pip install "curuptures[cuda13]"
 ```
 
-Use `cuda12` instead of `cuda13` when appropriate for your CUDA environment.
+Use the option matching your CUDA environment.
+
+Verify your GPU with:
+
+```bash
+nvidia-smi
+```
 
 ---
 
-## Quick start
+## ⚡ Quick Start
 
 ### Single-series PELT
 
@@ -113,16 +127,14 @@ breakpoints = (
 print(breakpoints)
 ```
 
-The final signal endpoint is included in the returned breakpoint list.
-
 ---
 
-## Batched change-point detection
+## 🚀 Batched Change-Point Detection
 
-The main use case for cuRuptures is processing multiple independent time
-series simultaneously.
+The main use case for cuRuptures is processing many independent signals
+simultaneously.
 
-Input arrays can have shape:
+Input arrays may have shape:
 
 ```text
 (n_series, n_samples)
@@ -136,7 +148,7 @@ for univariate signals, or:
 
 for multivariate signals.
 
-### Batched PELT
+### BatchPelt
 
 ```python
 import numpy as np
@@ -155,7 +167,6 @@ signals = np.stack([
     ]),
 ])
 
-
 breakpoints = (
     BatchPelt(
         model="l2",
@@ -171,12 +182,11 @@ breakpoints = (
 print(breakpoints)
 ```
 
-Each element of `breakpoints` contains the detected change points for one
-series.
+Each element contains the detected breakpoints for one signal.
 
 ---
 
-## GPU optimal partitioning
+## ⚙️ GPU Optimal Partitioning
 
 cuRuptures also provides:
 
@@ -186,8 +196,6 @@ from curuptures import BatchOptimalPartitioning
 
 This solver performs exact penalized optimal partitioning without PELT
 pruning.
-
-Example:
 
 ```python
 breakpoints = (
@@ -204,37 +212,38 @@ breakpoints = (
 ```
 
 Although this algorithm evaluates more candidate segments than PELT, its
-regular batched computation can map particularly well to GPU hardware.
+dense and regular batched computation can map efficiently to GPU hardware.
 
 ---
 
-## Which batched solver should I use?
+## 🧠 Which Solver Should I Use?
 
 ### `BatchOptimalPartitioning`
 
-Consider this solver when:
+Recommended when:
 
-- many independent time series are processed together,
-- signals are short to moderately long,
-- GPU throughput is more important than minimizing candidate evaluations,
-- dense regular GPU operations are advantageous.
+- many independent signals are processed together,
+- high GPU throughput is important,
+- dense GPU operations are advantageous,
+- signal lengths are moderate to large.
 
 ### `BatchPelt`
 
-Consider this solver when:
+Recommended when:
 
+- PELT pruning removes many candidate locations,
 - signals are extremely long,
-- pruning removes a substantial fraction of candidate locations,
-- the quadratic candidate growth of optimal partitioning becomes limiting.
+- quadratic candidate growth becomes limiting.
 
 Both algorithms solve the same penalized change-point objective when used with
 equivalent parameters.
 
 ---
-## L2 cost
 
-For a segment spanning samples `s` through `e - 1`, cuRuptures currently uses the L2
-piecewise-constant cost:
+## 📐 L2 Cost
+
+For a segment spanning samples `s` through `e - 1`, cuRuptures currently uses
+the L2 piecewise-constant cost:
 
 <p align="center">
   <strong>
@@ -243,7 +252,7 @@ piecewise-constant cost:
   </strong>
 </p>
 
-where `mean(x[s:e])` denotes the mean value of the samples in the segment.
+where `mean(x[s:e])` denotes the mean of the samples in the segment.
 
 Prefix sums allow segment costs to be evaluated efficiently on the GPU.
 
@@ -254,76 +263,72 @@ model="l2"
 ```
 
 Additional cost functions are planned for future releases.
----
-
-## Preliminary performance observations
-
-Development benchmarks have shown substantial benefits from batching change
-point workloads on the GPU.
-
-Representative development measurements from several batch-size and
-signal-length scaling experiments are shown below:
-
-| Samples per series | Batch size | BatchPelt | BatchOptimalPartitioning | Optimal/Pelt |
-|---:|---:|---:|---:|---:|
-| 4,000 | 25 | 1.519 s | 0.110 s | 13.79x |
-| 16,000 | 10 | 5.531 s | 0.454 s | 12.18x |
-| 32,000 | 5 | 12.259 s | 0.903 s | 13.58x |
-| 64,000 | 5 | 23.395 s | 2.083 s | 11.23x |
-| 128,000 | 5 | 45.949 s | 5.831 s | 7.88x |
-| 256,000 | 5 | 96.573 s | 22.145 s | 4.36x |
-
-\* Longer-signal experiments used a smaller batch size.
-
-These measurements are intended to illustrate algorithmic behavior rather
-than provide universal performance claims. Performance depends on GPU model,
-batch size, signal length, change-point structure, penalty, `jump`, CUDA
-environment, and system load.
-
-Development measurements were performed on a shared NVIDIA GPU, so formal
-benchmark results should be reproduced under controlled hardware conditions
-before publication-quality speedup claims are made.
-
-A particularly interesting observation is that
-`BatchOptimalPartitioning` can outperform `BatchPelt` despite evaluating more
-candidate segments. As signal length becomes very large, however, its
-quadratic candidate growth becomes increasingly visible and its advantage
-decreases.
 
 ---
 
-## Correctness validation
+## 📊 Performance
 
-cuRuptures is tested against the established `ruptures` package.
+cuRuptures is designed to exploit parallelism across both candidate segments
+and independent time series.
 
-The current test suite includes:
+Representative controlled benchmarks show that GPU execution becomes
+increasingly advantageous as batch size and signal length increase.
+
+For a batch of 100 signals with 1,000 samples per signal:
+
+| Solver | Median time | Relative to CPU reference |
+|---|---:|---:|
+| `ruptures.Pelt` CPU loop | 3.805 s | 1.0× |
+| `BatchPelt` | 0.088 s | 43.0× |
+| `BatchOptimalPartitioning` | 0.045 s | 83.7× |
+
+These values represent **batched-throughput comparisons** against running
+`ruptures.Pelt` independently for each signal.
+
+Performance depends on:
+
+- GPU architecture
+- batch size
+- signal length
+- penalty
+- `jump`
+- change-point structure
+- CUDA version
+- CuPy version
+- GPU workload
+
+See [`benchmarks/`](benchmarks/) for reproducible benchmark scripts and
+controlled benchmark records.
+
+---
+
+## ✅ Correctness
+
+cuRuptures is validated against the established
+[`ruptures`](https://github.com/deepcharles/ruptures) package.
+
+The test suite includes:
 
 - known change-point examples,
-- comparisons against `ruptures.Pelt`,
-- multiple penalties and jump values,
+- comparisons with `ruptures.Pelt`,
+- randomized signals,
+- multiple penalties,
+- multiple jump values,
 - univariate signals,
 - multivariate signals,
-- randomized batches,
 - no-change signals,
-- signals containing many strong change points,
-- signal lengths not divisible by `jump`,
-- agreement between batched PELT and batched optimal partitioning.
+- signals with multiple strong change points,
+- agreement between batched GPU solvers.
 
-Run the tests with:
+Run the tests on a CUDA-enabled system:
 
 ```bash
 pytest -q
 ```
 
-The current development suite contains:
-
-```text
-32 tests
-```
-
 ---
 
-## Public API
+## 📚 Public API
 
 ```python
 from curuptures import (
@@ -337,11 +342,11 @@ from curuptures import (
 
 ### `CostL2`
 
-GPU L2 segment cost for one signal.
+GPU L2 segment cost for a single signal.
 
 ### `BatchCostL2`
 
-Vectorized GPU L2 segment cost for batches of independent signals.
+Vectorized GPU L2 segment cost for batches of signals.
 
 ### `Pelt`
 
@@ -349,7 +354,7 @@ Single-series PELT implementation.
 
 ### `BatchPelt`
 
-GPU batched PELT with independent candidate pruning for each signal.
+GPU batched PELT with independent pruning for each signal.
 
 ### `BatchOptimalPartitioning`
 
@@ -357,7 +362,7 @@ GPU batched exact optimal partitioning without pruning.
 
 ---
 
-## Project structure
+## 🗂 Project Structure
 
 ```text
 curuptures/
@@ -373,6 +378,8 @@ curuptures/
 │           ├── l2.py
 │           └── batch_l2.py
 ├── tests/
+├── CITATION.cff
+├── CONTRIBUTING.md
 ├── LICENSE
 ├── pyproject.toml
 └── README.md
@@ -380,49 +387,70 @@ curuptures/
 
 ---
 
-## Roadmap
+## 🛣 Roadmap
 
-Planned work includes:
+Planned development includes:
 
 - additional change-point cost functions,
+- L1 cost,
+- kernel-based costs,
 - additional segmentation algorithms,
-- improved GPU memory profiling,
-- broader batch-size and signal-length benchmarks,
-- controlled CPU/GPU benchmarking,
-- API documentation,
-- continuous integration,
-- PyPI releases,
-- examples and tutorials.
-
-Potential future costs include L1 and kernel-based costs.
+- GPU kernel profiling,
+- kernel fusion,
+- custom CuPy/CUDA kernels,
+- improved memory profiling,
+- additional benchmarks,
+- expanded documentation,
+- tutorials and examples.
 
 ---
 
-## Relationship to ruptures
+## 🤝 Contributing
 
-[ruptures](https://github.com/deepcharles/ruptures) is a mature Python library
-for offline change-point detection.
+Contributions are welcome.
 
-cuRuptures does not aim to replace its broad algorithm collection. Instead,
-the project focuses on GPU-oriented implementations and especially batched
-workloads that can benefit from CUDA parallelism.
+See:
 
-`ruptures` is also used as a correctness reference in the cuRuptures test
-suite.
+[CONTRIBUTING.md](CONTRIBUTING.md)
+
+for development setup, testing, benchmarking, and pull-request guidelines.
 
 ---
 
-## License
+## 📚 Citation
+
+If you use cuRuptures in your research, please cite the software.
+
+GitHub provides citation information automatically from:
+
+[CITATION.cff](CITATION.cff)
+
+A basic software citation is:
+
+```bibtex
+@software{curuptures2026,
+  author = {Ali, Momina Liaqat},
+  title = {cuRuptures: GPU-Accelerated Change-Point Detection with CuPy},
+  year = {2026},
+  version = {0.1.1},
+  url = {https://github.com/MominaLAli/curuptures}
+}
+```
+
+---
+
+## 📄 License
 
 cuRuptures is released under the MIT License.
 
 See [LICENSE](LICENSE).
 
 ---
-## Citation
 
-If you use cuRuptures in research, please cite the software using the
-repository's [`CITATION.cff`](CITATION.cff) metadata.
+## 🔗 Links
 
-GitHub can also generate formatted citation information directly from the
-repository.
+- [PyPI](https://pypi.org/project/curuptures/)
+- [GitHub](https://github.com/MominaLAli/curuptures)
+- [Releases](https://github.com/MominaLAli/curuptures/releases)
+- [Issues](https://github.com/MominaLAli/curuptures/issues)
+- [Benchmarks](benchmarks/)
