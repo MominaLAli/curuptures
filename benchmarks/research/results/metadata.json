@@ -1,0 +1,11 @@
+{
+  "python": "3.12.13",
+  "numpy": "2.5.2",
+  "cupy": "14.2.0",
+  "ruptures": "v1.1.10",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "cuda_runtime": 12090,
+  "jump": 5,
+  "min_size": 2,
+  "default_penalty": 10.0
+}
