@@ -421,9 +421,10 @@ cuRuptures is released under the MIT License.
 See [LICENSE](LICENSE).
 
 ---
-
 ## Citation
 
-cuRuptures is under active development.
+If you use cuRuptures in research, please cite the software using the
+repository's [`CITATION.cff`](CITATION.cff) metadata.
 
-Citation information will be added with the first archival software release.
+GitHub can also generate formatted citation information directly from the
+repository.
