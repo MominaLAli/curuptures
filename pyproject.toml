@@ -59,7 +59,10 @@ benchmark = [
     "ruptures>=1.1.10",
 ]
 
-
+[project.urls]
+Homepage = "https://github.com/MominaLAli/curuptures"
+Repository = "https://github.com/MominaLAli/curuptures"
+Issues = "https://github.com/MominaLAli/curuptures/issues"
 
 
 [tool.setuptools.packages.find]
