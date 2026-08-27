@@ -56,6 +56,9 @@ class BatchPelt:
         self.n_series = None
         self.n_samples = None
 
+        # Optional research diagnostics collected during PELT.
+        self.candidate_stats_ = None
+
     def fit(self, signals):
         """
         Fit batched L2 prefix statistics on the GPU.
@@ -74,7 +77,7 @@ class BatchPelt:
                 "BatchPelt must be fitted before predict()"
             )
 
-    def _segment(self, pen):
+    def _segment(self, pen, collect_stats=False):
         """
         Run batched PELT with independent pruning per series.
 
@@ -84,6 +87,24 @@ class BatchPelt:
 
         n = self.n_samples
         batch = self.n_series
+
+        # Reset optional research diagnostics.
+        self.candidate_stats_ = None
+
+        stats_endpoints = []
+        stats_n_candidates = []
+        stats_union_candidates = []
+        stats_active_counts = []
+        stats_survivor_counts = []
+
+        # Diagnostic estimate of candidate-series work if
+        # series are dynamically divided into smaller groups.
+        stats_grouped_work = {
+            2: [],
+            4: [],
+            8: [],
+            16: [],
+        }
 
         if n < self.min_size:
             raise ValueError(
@@ -199,6 +220,87 @@ class BatchPelt:
                 & finite_prefix
             )
 
+            # Number of active PELT candidates for each series
+            # before batch-wide candidate compaction.
+            if collect_stats:
+                active_counts = cp.sum(
+                    active,
+                    axis=1,
+                    dtype=cp.int64,
+                )
+
+                # --------------------------------------------------
+                # Hypothetical dynamically grouped execution.
+                #
+                # Series are sorted by current active-candidate
+                # count, then neighboring series are assigned to
+                # groups. Each group evaluates only the union of
+                # candidates needed by its own members.
+                # --------------------------------------------------
+
+                sorted_rows = cp.argsort(
+                    active_counts
+                )
+
+                for requested_groups in stats_grouped_work:
+
+                    n_groups = min(
+                        requested_groups,
+                        batch,
+                    )
+
+                    grouped_work = cp.asarray(
+                        0,
+                        dtype=cp.int64,
+                    )
+
+                    for group_index in range(n_groups):
+
+                        lo = (
+                            group_index
+                            * batch
+                            // n_groups
+                        )
+
+                        hi = (
+                            (group_index + 1)
+                            * batch
+                            // n_groups
+                        )
+
+                        group_rows = sorted_rows[
+                            lo:hi
+                        ]
+
+                        if group_rows.size == 0:
+                            continue
+
+                        group_active = active[
+                            group_rows,
+                            :
+                        ]
+
+                        group_union = cp.count_nonzero(
+                            cp.any(
+                                group_active,
+                                axis=0,
+                            )
+                        )
+
+                        grouped_work = (
+                            grouped_work
+                            + (
+                                group_rows.size
+                                * group_union
+                            )
+                        )
+
+                    stats_grouped_work[
+                        requested_groups
+                    ].append(
+                        grouped_work
+                    )
+
             # --------------------------------------------------
             # Compact candidates discarded by EVERY series.
             #
@@ -215,6 +317,24 @@ class BatchPelt:
             )[0]
 
             if selected_indices.size == 0:
+
+                if collect_stats:
+                    stats_endpoints.append(
+                        int(end)
+                    )
+                    stats_n_candidates.append(
+                        int(n_candidates)
+                    )
+                    stats_union_candidates.append(
+                        0
+                    )
+                    stats_active_counts.append(
+                        active_counts.copy()
+                    )
+                    stats_survivor_counts.append(
+                        cp.zeros_like(active_counts)
+                    )
+
                 continue
 
             starts = all_starts[
@@ -309,6 +429,29 @@ class BatchPelt:
                 )
             )
 
+            if collect_stats:
+                survivor_counts = cp.sum(
+                    keep_selected,
+                    axis=1,
+                    dtype=cp.int64,
+                )
+
+                stats_endpoints.append(
+                    int(end)
+                )
+                stats_n_candidates.append(
+                    int(n_candidates)
+                )
+                stats_union_candidates.append(
+                    int(selected_indices.size)
+                )
+                stats_active_counts.append(
+                    active_counts.copy()
+                )
+                stats_survivor_counts.append(
+                    survivor_counts.copy()
+                )
+
             # Clear the processed candidate region.
             admissible[
                 :,
@@ -328,6 +471,76 @@ class BatchPelt:
         previous_cpu = cp.asnumpy(
             previous
         )
+
+        if collect_stats and stats_active_counts:
+            active_counts_gpu = cp.stack(
+                stats_active_counts,
+                axis=0,
+            )
+
+            survivor_counts_gpu = cp.stack(
+                stats_survivor_counts,
+                axis=0,
+            )
+
+            possible_gpu = cp.asarray(
+                stats_n_candidates,
+                dtype=cp.float64,
+            )[:, None]
+
+            union_gpu = cp.asarray(
+                stats_union_candidates,
+                dtype=cp.float64,
+            )
+
+            active_density_gpu = (
+                active_counts_gpu
+                / possible_gpu
+            )
+
+            survivor_density_gpu = (
+                survivor_counts_gpu
+                / possible_gpu
+            )
+
+            union_density_gpu = (
+                union_gpu
+                / possible_gpu[:, 0]
+            )
+
+            self.candidate_stats_ = {
+                "endpoints": cp.asnumpy(
+                    cp.asarray(stats_endpoints)
+                ),
+                "n_candidates": cp.asnumpy(
+                    cp.asarray(stats_n_candidates)
+                ),
+                "union_candidates": cp.asnumpy(
+                    cp.asarray(stats_union_candidates)
+                ),
+                "active_counts": cp.asnumpy(
+                    active_counts_gpu
+                ),
+                "survivor_counts": cp.asnumpy(
+                    survivor_counts_gpu
+                ),
+                "active_density": cp.asnumpy(
+                    active_density_gpu
+                ),
+                "survivor_density": cp.asnumpy(
+                    survivor_density_gpu
+                ),
+                "union_density": cp.asnumpy(
+                    union_density_gpu
+                ),
+                "grouped_work": {
+                    n_groups: cp.asnumpy(
+                        cp.stack(values)
+                    )
+                    for n_groups, values
+                    in stats_grouped_work.items()
+                },
+            }
 
         results = []
 
