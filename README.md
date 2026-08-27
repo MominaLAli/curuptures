@@ -233,12 +233,15 @@ equivalent parameters.
 ---
 ## L2 cost
 
-For a segment from sample `s` to `e`, cuRuptures currently uses the L2
+For a segment spanning samples `s` through `e - 1`, cuRuptures currently uses the L2
 piecewise-constant cost:
 
-```text
-C(s, e) = sum_{t=s}^{e-1} ||x_t - mean(x[s:e])||_2^2
-```
+<p align="center">
+  <strong>
+    C(s, e) = ∑<sub>t=s</sub><sup>e−1</sup>
+    ‖x<sub>t</sub> − mean(x[s:e])‖<sub>2</sub><sup>2</sup>
+  </strong>
+</p>
 
 where `mean(x[s:e])` denotes the mean value of the samples in the segment.
 
@@ -251,7 +254,6 @@ model="l2"
 ```
 
 Additional cost functions are planned for future releases.
-
 ---
 
 ## Preliminary performance observations
