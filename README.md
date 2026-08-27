@@ -231,20 +231,19 @@ Both algorithms solve the same penalized change-point objective when used with
 equivalent parameters.
 
 ---
-
 ## L2 cost
 
 For a segment from sample \(s\) to \(e\), cuRuptures currently uses the L2
 piecewise-constant cost:
 
-\[
+$$
 C(s,e)
 =
 \sum_{t=s}^{e-1}
 \left\|
 x_t-\bar{x}_{s:e}
-\right\|_2^2.
-\]
+\right\|_2^2
+$$
 
 Prefix sums allow segment costs to be evaluated efficiently on the GPU.
 
@@ -255,7 +254,6 @@ model="l2"
 ```
 
 Additional cost functions are planned for future releases.
-
 ---
 
 ## Preliminary performance observations
